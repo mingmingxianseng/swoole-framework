@@ -11,7 +11,7 @@ namespace MMC\Swoole\Listener\Abs;
 use MMC\Swoole\Listener\Event;
 use MMC\Swoole\Listener\OnStartInterface;
 
-abstract class AbsOnStart implements OnStartInterface
+abstract class AbsOnStart extends AbsListener implements OnStartInterface
 {
     public function getEvent(): string
     {
