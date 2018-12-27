@@ -61,9 +61,17 @@ class FastRouteOnRequest extends AbsRequest
         } catch (\Throwable $e) {
             $this->exceptionHandler($e, $response);
         } finally {
-            Context::clear();
+            $this->afterRequest();
         }
 
+    }
+
+    /**
+     * 请求结束后置时间
+     */
+    protected function afterRequest()
+    {
+        Context::clear();
     }
 
     protected function exceptionHandler(\Throwable $t, Response $response)
@@ -92,7 +100,9 @@ class FastRouteOnRequest extends AbsRequest
         } elseif ($this->options['controller_namespace']) {
             $class = "{$this->options['controller_namespace']}{$controller}";
         } else {
-            throw new \Exception(" class[{$controller}] is invalid. must be a instance of " . ControllerInterface::class);
+            throw new \Exception(
+                " class[{$controller}] is invalid. must be a instance of " . ControllerInterface::class
+            );
         }
         if (!is_a($class, ControllerInterface::class, true)) {
             throw new \Exception("{$class} is not a instance of " . ControllerInterface::class);
