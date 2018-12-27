@@ -1,7 +1,7 @@
 {
   "name": "mmxs/swoole-framework",
   "description": "spider article",
-  "type": "project",
+  "type": "library",
   "require": {
     "php": ">=7.1.0",
     "ext-swoole": "^4.1",
