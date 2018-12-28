@@ -14,24 +14,18 @@ use Swoole\Server;
 
 class CommonOnManagerStart extends AbsOnManagerStart
 {
-    private $managerPidPath;
-    private $processName;
+    private $name;
 
-    public function __construct(string $masterPidPath, string $processName, LoggerInterface $logger)
+    public function __construct(string $name, LoggerInterface $logger)
     {
         parent::__construct($logger);
-        $this->managerPidPath = $masterPidPath;
-        $this->processName    = $processName;
+        $this->name = $name;
     }
 
     public function dispatch(Server $server): void
     {
-        $result = file_put_contents($this->managerPidPath, $server->manager_pid);
-        if ($result === false) {
-            throw new \RuntimeException("manager pid file create failed. path:{$this->managerPidPath}");
-        }
         if (PHP_OS !== 'Darwin') {
-            swoole_set_process_name($this->processName);
+            swoole_set_process_name($this->name);
         }
     }
 

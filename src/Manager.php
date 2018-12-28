@@ -10,38 +10,94 @@ namespace MMC\Swoole;
 
 class Manager
 {
-    private $options
-        = [
-            'manager_pid' => '',
-            'master_pid'  => '',
-        ];
+    private $pidFile;
 
-    public function __construct(string $masterPidPath, string $managerPidPath)
+    public function __construct($pidFile)
     {
-        $this->options['master_pid']  = $masterPidPath;
-        $this->options['manager_pid'] = $managerPidPath;
+        $this->pidFile = $pidFile;
+    }
+
+    private function opCacheClear()
+    {
+        if (function_exists('apc_clear_cache')) {
+            apc_clear_cache();
+        }
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
     }
 
     public function reload()
     {
-        echo "{$this->options['project_name']} reload...\n";
-        file_exists($this->options['master_pid']) && shell_exec("kill -USR1 `cat {$this->options['master_pid']}`");
-        file_exists($this->options['manager_pid']) && shell_exec("kill -USR1 `cat {$this->options['manager_pid']}`");
+        if (file_exists($this->pidFile)) {
+            $this->opCacheClear();
+            $pid = file_get_contents($this->pidFile);
+            if (!\swoole_process::kill($pid, 0)) {
+                echo "pid :{$pid} not exist \n";
+
+                return;
+            }
+            \swoole_process::kill($pid, SIGUSR1);
+            echo "send server reload command at " . date("y-m-d h:i:s") . "\n";
+
+        } else {
+            echo "PID file does not exist, please check whether to run in the daemon mode!\n";
+        }
+
+    }
+
+    public function kill()
+    {
+        $this->_stop(true);
     }
 
     public function stop()
     {
-        echo "{$this->options['project_name']} stop...\n";
+        $this->_stop(true);
+    }
 
-        file_exists($this->options['master_pid']) && shell_exec("kill -15 `cat {$this->options['master_pid']}`");
+    public function _stop(bool $force)
+    {
+        if (file_exists($this->pidFile)) {
+            $pid = file_get_contents($this->pidFile);
 
-        file_exists($this->options['manager_pid']) && shell_exec("kill -15 `cat {$this->options['manager_pid']}`");
+            if (!\swoole_process::kill($pid, 0)) {
+                echo "PID :{$pid} not exist \n";
 
-        echo "stop success.";
+                return false;
+            }
 
-        $output = shell_exec("ps aux | grep " . $this->options['manager_pid']);
-        echo $output . PHP_EOL;
-        $output = shell_exec("ps aux | grep " . $this->options['master_pid']);
-        echo $output . PHP_EOL;
+            if ($force) {
+                \swoole_process::kill($pid, SIGKILL);
+            } else {
+                \swoole_process::kill($pid);
+            }
+
+            //等待5秒
+            $time = time();
+            $flag = false;
+            while (true) {
+                usleep(1000);
+                if (!\swoole_process::kill($pid, 0)) {
+                    echo "server stop at " . date("y-m-d h:i:s") . "\n";
+                    if (is_file($this->pidFile)) {
+                        unlink($this->pidFile);
+                    }
+                    $flag = true;
+                    break;
+                } else {
+                    if (time() - $time > 5) {
+                        echo "stop server fail. try kill again \n";
+                        break;
+                    }
+                }
+            }
+
+            return $flag;
+        } else {
+            echo "PID file does not exist, please check whether to run in the daemon mode!\n";
+
+            return false;
+        }
     }
 }
